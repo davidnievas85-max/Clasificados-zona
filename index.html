@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clasificados de la Zona | Compra, Venta, Tiendas y Servicios</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f3f4f6;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="text-gray-800 min-h-screen flex flex-col">
+
+  <!-- Encabezado principal -->
+  <header class="bg-emerald-800 text-white sticky top-0 z-30 shadow-md">
+    <div class="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="bg-emerald-600 p-2 rounded-xl shrink-0">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        </div>
+        <div class="truncate">
+          <h1 class="text-base sm:text-lg font-bold leading-tight truncate">Clasificados de la Zona</h1>
+          <p class="text-[11px] sm:text-xs text-emerald-200 truncate">Sur de Córdoba · Norte de La Pampa</p>
+        </div>
+      </div>
+
+      <button
+        id="btnAbrirModal"
+        type="button"
+        class="bg-amber-400 hover:bg-amber-300 active:scale-95 text-emerald-950 font-bold text-xs sm:text-sm px-3.5 py-2.5 rounded-xl shadow transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+      >
+        <span>+ Publicar gratis</span>
+      </button>
+    </div>
+
+    <!-- Barra de búsqueda y localidad -->
+    <div class="bg-emerald-900/80 border-t border-emerald-700/60">
+      <div class="max-w-5xl mx-auto px-4 py-2.5 grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div class="sm:col-span-2 relative">
+          <input
+            id="buscadorInput"
+            type="search"
+            placeholder="Buscar taladro, moto, plomero, tienda..."
+            class="w-full bg-white text-gray-900 placeholder-gray-400 text-sm rounded-xl pl-3.5 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+          >
+        </div>
+        <div>
+          <select
+            id="filtroLocalidad"
+            class="w-full bg-white text-gray-900 text-sm font-medium rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+          >
+            <option value="TODAS">Todas las localidades</option>
+            <option value="Vicuña Mackenna">Vicuña Mackenna</option>
+            <option value="Del Campillo">Del Campillo</option>
+            <option value="Huinca Renancó">Huinca Renancó</option>
+            <option value="Realicó">Realicó</option>
+            <option value="Otra localidad">Otra localidad</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navegación por secciones -->
+  <nav class="bg-white border-b border-gray-200 sticky top-[116px] sm:top-[106px] z-20">
+    <div class="max-w-5xl mx-auto px-4 flex gap-2 overflow-x-auto no-scrollbar py-2.5" id="tabsSeccion">
+      <button data-section="articulos" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition cursor-pointer bg-emerald-700 text-white">
+        Artículos
+      </button>
+      <button data-section="tiendas" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition cursor-pointer bg-gray-100 text-gray-700 hover:bg-gray-200">
+        Tiendas
+      </button>
+      <button data-section="servicios" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition cursor-pointer bg-gray-100 text-gray-700 hover:bg-gray-200">
+        Servicios
+      </button>
+    </div>
+
+    <!-- Filtros de categoría -->
+    <div class="max-w-5xl mx-auto px-4 pb-3 flex gap-2 overflow-x-auto no-scrollbar" id="chipsCategoria"></div>
+  </nav>
+
+  <!-- Contenido principal -->
+  <main class="max-w-5xl mx-auto w-full px-4 py-5 flex-1">
+    <div class="flex items-center justify-between mb-4">
+      <p id="contadorAvisos" class="text-xs sm:text-sm text-gray-600 font-medium">Cargando publicaciones...</p>
+      <button id="btnLimpiarFiltros" type="button" class="text-xs font-semibold text-emerald-700 hover:underline cursor-pointer">
+        Limpiar filtros
+      </button>
+    </div>
+
+    <div id="grillaAvisos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+    <div id="estadoVacio" class="hidden bg-white rounded-2xl border border-gray-200 p-8 text-center mt-4">
+      <p class="text-base font-semibold text-gray-800 mb-1">No encontramos avisos con esos filtros</p>
+      <p class="text-sm text-gray-500 mb-4">Probá cambiando la localidad, la categoría o publicá el primer aviso.</p>
+      <button id="btnPublicarDesdeVacio" type="button" class="bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl cursor-pointer">
+        + Publicar un aviso
+      </button>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t border-gray-200 mt-8 py-4 text-center text-xs text-gray-500 px-4">
+    Clasificados de la Zona · Espacio comunitario para vecinos y comercios
+  </footer>
+
+  <!-- Modal para publicar aviso con foto desde el celular -->
+  <div id="modalPublicar" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden my-auto">
+      <div class="bg-emerald-800 text-white px-5 py-4 flex items-center justify-between">
+        <h2 class="text-base sm:text-lg font-bold">Publicar un aviso</h2>
+        <button id="btnCerrarModal" type="button" class="text-emerald-100 hover:text-white text-xl font-bold leading-none px-2 cursor-pointer">&times;</button>
+      </div>
+
+      <form id="formPublicar" class="p-5 space-y-3.5 max-h-[82vh] overflow-y-auto">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Sección *</label>
+            <select id="inputSeccion" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600">
+              <option value="articulos">Artículos (Compra / Venta)</option>
+              <option value="tiendas">Tiendas / Comercios</option>
+              <option value="servicios">Servicios / Oficios</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Categoría *</label>
+            <select id="inputCategoria" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"></select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Localidad *</label>
+            <select id="inputLocalidad" required class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600">
+              <option value="Vicuña Mackenna">Vicuña Mackenna</option>
+              <option value="Del Campillo">Del Campillo</option>
+              <option value="Huinca Renancó">Huinca Renancó</option>
+              <option value="Realicó">Realicó</option>
+              <option value="Otra localidad">Otra localidad</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Precio o tarifa *</label>
+            <input id="inputPrecio" type="text" required placeholder="Ej: $45.000 o Consultar" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Título del aviso *</label>
+          <input id="inputTitulo" type="text" required maxlength="90" placeholder="Ej: Taladro percutor 750W / Plomero matriculado" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Tu nombre o comercio *</label>
+            <input id="inputVendedor" type="text" required placeholder="Ej: Juan / Corralón del Sur" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-gray-700 mb-1">WhatsApp (con código de área) *</label>
+            <input id="inputWhatsapp" type="tel" required placeholder="Ej: 3583401234" class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Descripción</label>
+          <textarea id="inputDescripcion" rows="2" maxlength="300" placeholder="Contá estado, horarios, envíos o detalles importantes..." class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"></textarea>
+        </div>
+
+        <!-- Subida de foto desde galería o cámara del celular -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 mb-1">Foto desde tu galería o cámara</label>
+          <input
+            id="inputFoto"
+            type="file"
+            accept="image/*"
+            class="block w-full text-xs text-gray-600 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 border border-gray-300 rounded-xl p-1.5 cursor-pointer"
+          >
+          <p id="estadoFoto" class="text-[11px] text-gray-500 mt-1">Se comprimirá automáticamente para subir rápido.</p>
+
+          <div id="contenedorPreview" class="hidden mt-2.5 relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+            <img id="imgPreview" src="" alt="Vista previa" class="w-full h-44 object-cover">
+            <button id="btnQuitarFoto" type="button" class="absolute top-2 right-2 bg-black/70 text-white text-xs font-semibold px-2.5 py-1 rounded-lg cursor-pointer">
+              Quitar foto
+            </button>
+          </div>
+        </div>
+
+        <div id="mensajeErrorForm" class="hidden text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-xl p-2.5"></div>
+
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button id="btnCancelarForm" type="button" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 cursor-pointer">
+            Cancelar
+          </button>
+          <button id="btnEnviarAviso" type="submit" class="bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white font-bold text-sm px-5 py-2.5 rounded-xl shadow cursor-pointer">
+            Publicar ahora
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Configuración conectada a Supabase
+    const SUPABASE_URL = "https://xzpbelumxkywytfjqlgv.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_jHrTcLyq_uG_G-dSpkf7Bg_LIv_QQLv";
+    const BUCKET_FOTOS = "fotos-avisos";
+
+    const supabaseClient = window.supabase
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+      : null;
+
+    const CATEGORIAS_POR_SECCION = {
+      articulos: ["Celulares y Electrónica", "Vehículos", "Hogar y Muebles", "Herramientas y Construcción", "Ropa y Calzado", "Otros"],
+      tiendas: ["Ferretería y Corralón", "Indumentaria", "Almacén y Alimentos", "Tecnología", "Otros comercios"],
+      servicios: ["Plomería y Gas", "Electricidad", "Albañilería y Obra", "Fletes y Mudanzas", "Reparaciones", "Otros servicios"]
+    };
+
+    const AVISOS_RESPALDO = [
+      {
+        id: "demo-1",
+        section: "articulos",
+        category: "Herramientas y Construcción",
+        location: "Huinca Renancó",
+        title: "Taladro de impacto 750W con maletín",
+        price: "$45.000",
+        seller: "Juan C.",
+        whatsapp: "5492336400000",
+        description: "Poco uso, incluye mechas y tope de profundidad.",
+        image_url: ""
+      },
+      {
+        id: "demo-2",
+        section: "servicios",
+        category: "Albañilería y Obra",
+        location: "Vicuña Mackenna",
+        title: "Albañilería, revoques, carpetas y arreglos de hogar",
+        price: "Consultar",
+        seller: "Oficio de la Zona",
+        whatsapp: "5493583400000",
+        description: "Presupuestos sin cargo en la localidad y alrededores.",
+        image_url: ""
+      }
+    ];
+
+    let avisos = [];
+    let seccionActiva = "articulos";
+    let categoriaActiva = "TODAS";
+    let archivoFotoSeleccionado = null;
+
+    // Referencias DOM
+    const grillaAvisos = document.getElementById("grillaAvisos");
+    const estadoVacio = document.getElementById("estadoVacio");
+    const contadorAvisos = document.getElementById("contadorAvisos");
+    const chipsCategoria = document.getElementById("chipsCategoria");
+    const buscadorInput = document.getElementById("buscadorInput");
+    const filtroLocalidad = document.getElementById("filtroLocalidad");
+    const modalPublicar = document.getElementById("modalPublicar");
+    const formPublicar = document.getElementById("formPublicar");
+    const inputSeccion = document.getElementById("inputSeccion");
+    const inputCategoria = document.getElementById("inputCategoria");
+    const inputFoto = document.getElementById("inputFoto");
+    const estadoFoto = document.getElementById("estadoFoto");
+    const contenedorPreview = document.getElementById("contenedorPreview");
+    const imgPreview = document.getElementById("imgPreview");
+    const btnQuitarFoto = document.getElementById("btnQuitarFoto");
+    const btnEnviarAviso = document.getElementById("btnEnviarAviso");
+    const mensajeErrorForm = document.getElementById("mensajeErrorForm");
+
+    function limpiarWhatsapp(numero) {
+      let digitos = (numero || "").replace(/\D/g, "");
+      if (!digitos) return "";
+      // Si ponen un número local de 10 dígitos sin 54, antepone 549 para Argentina
+      if (digitos.length === 10) {
+        digitos = "549" + digitos;
+      } else if (digitos.startsWith("54") && !digitos.startsWith("549") && digitos.length === 12) {
+        digitos = "549" + digitos.slice(2);
+      }
+      return digitos;
+    }
+
+    function escaparTexto(texto = "") {
+      const div = document.createElement("div");
+      div.textContent = texto;
+      return div.innerHTML;
+    }
+
+    // Comprime la imagen en el navegador antes de subirla a Supabase Storage
+    function comprimirImagen(file, maxAncho = 1024, calidad = 0.78) {
+      return new Promise((resolve, reject) => {
+        const lector = new FileReader();
+        lector.onload = (evento) => {
+          const imagen = new Image();
+          imagen.onload = () => {
+            let ancho = imagen.width;
+            let alto = imagen.height;
+
+            if (ancho > maxAncho) {
+              alto = Math.round((alto * maxAncho) / ancho);
+              ancho = maxAncho;
+            }
+
+            const canvas = document.createElement("canvas");
+            canvas.width = ancho;
+            canvas.height = alto;
+
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(imagen, 0, 0, ancho, alto);
+
+            canvas.toBlob(
+              (blob) => {
+                if (!blob) {
+                  reject(new Error("No se pudo procesar la imagen."));
+                  return;
+                }
+                resolve(blob);
+              },
+              "image/jpeg",
+              calidad
+            );
+          };
+          imagen.onerror = () => reject(new Error("Archivo de imagen no válido."));
+          imagen.src = evento.target.result;
+        };
+        lector.onerror = () => reject(new Error("No se pudo leer el archivo."));
+        lector.readAsDataURL(file);
+      });
+    }
+
+    async function subirFotoASupabase(file) {
+      if (!supabaseClient) throw new Error("Conexión con Supabase no disponible.");
+      const blobComprimido = await comprimirImagen(file);
+      const nombreArchivo = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+
+      const { error: errorSubida } = await supabaseClient.storage
+        .from(BUCKET_FOTOS)
+        .upload(nombreArchivo, blobComprimido, {
+          contentType: "image/jpeg",
+          cacheControl: "3600",
+          upsert: false
+        });
+
+      if (errorSubida) {
+        throw new Error("Error al subir la foto: " + errorSubida.message);
+      }
+
+      const { data: urlData } = supabaseClient.storage
+        .from(BUCKET_FOTOS)
+        .getPublicUrl(nombreArchivo);
+
+      return urlData.publicUrl;
+    }
+
+    async function cargarAvisos() {
+      contadorAvisos.textContent = "Cargando publicaciones...";
+      if (!supabaseClient) {
+        avisos = AVISOS_RESPALDO;
+        renderizarTodo();
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from("listings")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error leyendo Supabase:", error);
+        avisos = AVISOS_RESPALDO;
+      } else {
+        avisos = data && data.length > 0 ? data : AVISOS_RESPALDO;
+      }
+
+      renderizarTodo();
+    }
+
+    function renderizarCategorias() {
+      const lista = CATEGORIAS_POR_SECCION[seccionActiva] || [];
+      const opciones = ["TODAS", ...lista];
+
+      chipsCategoria.innerHTML = opciones.map((cat) => {
+        const activa = categoriaActiva === cat;
+        const etiqueta = cat === "TODAS" ? "Todas" : cat;
+        return `
+          <button
+            type="button"
+            data-categoria="${escaparTexto(cat)}"
+            class="chip-cat px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+              activa
+                ? "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-600"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }"
+          >
+            ${escaparTexto(etiqueta)}
+          </button>
+        `;
+      }).join("");
+
+      document.querySelectorAll(".chip-cat").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          categoriaActiva = btn.dataset.categoria;
+          renderizarTodo();
+        });
+      });
+    }
+
+    function renderizarAvisos() {
+      const textoBusqueda = (buscadorInput.value || "").trim().toLowerCase();
+      const localidadElegida = filtroLocalidad.value;
+
+      const filtrados = avisos.filter((item) => {
+        const coincideSeccion = item.section === seccionActiva;
+        const coincideCategoria = categoriaActiva === "TODAS" || item.category === categoriaActiva;
+        const coincideLocalidad = localidadElegida === "TODAS" || item.location === localidadElegida;
+        const coincideTexto = !textoBusqueda || (
+          (item.title || "").toLowerCase().includes(textoBusqueda) ||
+          (item.description || "").toLowerCase().includes(textoBusqueda) ||
+          (item.seller || "").toLowerCase().includes(textoBusqueda) ||
+          (item.category || "").toLowerCase().includes(textoBusqueda) ||
+          (item.location || "").toLowerCase().includes(textoBusqueda)
+        );
+        return coincideSeccion && coincideCategoria && coincideLocalidad && coincideTexto;
+      });
+
+      contadorAvisos.textContent = `${filtrados.length} ${filtrados.length === 1 ? "publicación" : "publicaciones"}`;
+
+      if (filtrados.length === 0) {
+        grillaAvisos.innerHTML = "";
+        estadoVacio.classList.remove("hidden");
+        return;
+      }
+
+      estadoVacio.classList.add("hidden");
+
+      grillaAvisos.innerHTML = filtrados.map((item) => {
+        const waNumero = limpiarWhatsapp(item.whatsapp);
+        const mensajeWa = encodeURIComponent(`Hola ${item.seller || ""}, vi tu aviso "${item.title}" en Clasificados de la Zona.`);
+        const linkWa = waNumero ? `https://wa.me/${waNumero}?text=${mensajeWa}` : "";
+
+        const bloqueImagen = item.image_url
+          ? `<img src="${escaparTexto(item.image_url)}" alt="${escaparTexto(item.title)}" loading="lazy" class="w-full h-48 object-cover bg-gray-100">`
+          : `<div class="w-full h-36 bg-emerald-50 text-emerald-700/70 flex flex-col items-center justify-center gap-1 border-b border-emerald-100">
+               <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+               </svg>
+               <span class="text-xs font-medium">Sin foto cargada</span>
+             </div>`;
+
+        return `
+          <article class="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between">
+            <div>
+              ${bloqueImagen}
+              <div class="p-4">
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                  <span class="text-[11px] font-semibold uppercase tracking-wide text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full truncate">
+                    ${escaparTexto(item.category || "General")}
+                  </span>
+                  <span class="text-xs font-medium text-gray-500 shrink-0">
+                    ${escaparTexto(item.location || "")}
+                  </span>
+                </div>
+
+                <h3 class="text-base font-bold text-gray-900 leading-snug mb-1">${escaparTexto(item.title)}</h3>
+                <p class="text-lg font-extrabold text-emerald-700 mb-2">${escaparTexto(item.price)}</p>
+
+                ${item.description
+                  ? `<p class="text-xs sm:text-sm text-gray-600 line-clamp-2 mb-3">${escaparTexto(item.description)}</p>`
+                  : ""}
+              </div>
+            </div>
+
+            <div class="px-4 pb-4 pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
+              <span class="text-xs text-gray-500 truncate">${escaparTexto(item.seller || "Vecino/a")}</span>
+              ${linkWa
+                ? `<a href="${linkWa}" target="_blank" rel="noopener noreferrer" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shrink-0">
+                     WhatsApp
+                   </a>`
+                : `<span class="text-xs text-gray-400">Sin WhatsApp</span>`}
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderizarTodo() {
+      renderizarCategorias();
+      renderizarAvisos();
+    }
+
+    function poblarCategoriasFormulario(seccion) {
+      const cats = CATEGORIAS_POR_SECCION[seccion] || [];
+      inputCategoria.innerHTML = cats
+        .map((c) => `<option value="${escaparTexto(c)}">${escaparTexto(c)}</option>`)
+        .join("");
+    }
+
+    function resetearFotoFormulario() {
+      archivoFotoSeleccionado = null;
+      inputFoto.value = "";
+      imgPreview.src = "";
+      contenedorPreview.classList.add("hidden");
+      estadoFoto.textContent = "Se comprimirá automáticamente para subir rápido.";
+    }
+
+    function abrirModal() {
+      inputSeccion.value = seccionActiva;
+      poblarCategoriasFormulario(seccionActiva);
+      mensajeErrorForm.classList.add("hidden");
+      modalPublicar.classList.remove("hidden");
+      modalPublicar.classList.add("flex");
+    }
+
+    function cerrarModal() {
+      modalPublicar.classList.add("hidden");
+      modalPublicar.classList.remove("flex");
+      formPublicar.reset();
+      resetearFotoFormulario();
+      mensajeErrorForm.classList.add("hidden");
+    }
+
+    // Eventos de pestañas de sección
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        seccionActiva = btn.dataset.section;
+        categoriaActiva = "TODAS";
+        document.querySelectorAll(".tab-btn").forEach((b) => {
+          const esActiva = b.dataset.section === seccionActiva;
+          b.className = `tab-btn px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition cursor-pointer ${
+            esActiva
+              ? "bg-emerald-700 text-white"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`;
+        });
+        renderizarTodo();
+      });
+    });
+
+    // Vista previa al elegir foto en el celular
+    inputFoto.addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) {
+        resetearFotoFormulario();
+        return;
+      }
+      if (!file.type.startsWith("image/")) {
+        mensajeErrorForm.textContent = "Seleccioná un archivo de imagen válido.";
+        mensajeErrorForm.classList.remove("hidden");
+        resetearFotoFormulario();
+        return;
+      }
+      mensajeErrorForm.classList.add("hidden");
+      archivoFotoSeleccionado = file;
+      const urlTemporal = URL.createObjectURL(file);
+      imgPreview.src = urlTemporal;
+      contenedorPreview.classList.remove("hidden");
+      const pesoMb = (file.size / (1024 * 1024)).toFixed(1);
+      estadoFoto.textContent = `Foto elegida (${pesoMb} MB). Se optimizará al publicar.`;
+    });
+
+    btnQuitarFoto.addEventListener("click", resetearFotoFormulario);
+    inputSeccion.addEventListener("change", () => poblarCategoriasFormulario(inputSeccion.value));
+    buscadorInput.addEventListener("input", renderizarAvisos);
+    filtroLocalidad.addEventListener("change", renderizarAvisos);
+
+    btnLimpiarFiltros.addEventListener("click", () => {
+      buscadorInput.value = "";
+      filtroLocalidad.value = "TODAS";
+      categoriaActiva = "TODAS";
+      renderizarTodo();
+    });
+
+    document.getElementById("btnAbrirModal").addEventListener("click", abrirModal);
+    document.getElementById("btnPublicarDesdeVacio").addEventListener("click", abrirModal);
+    document.getElementById("btnCerrarModal").addEventListener("click", cerrarModal);
+    document.getElementById("btnCancelarForm").addEventListener("click", cerrarModal);
+
+    // Envío del formulario y guardado en Supabase
+    formPublicar.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      mensajeErrorForm.classList.add("hidden");
+
+      const seccion = inputSeccion.value;
+      const categoria = inputCategoria.value;
+      const localidad = document.getElementById("inputLocalidad").value;
+      const precio = document.getElementById("inputPrecio").value.trim();
+      const titulo = document.getElementById("inputTitulo").value.trim();
+      const vendedor = document.getElementById("inputVendedor").value.trim();
+      const whatsapp = document.getElementById("inputWhatsapp").value.trim();
+      const descripcion = document.getElementById("inputDescripcion").value.trim();
+
+      if (!titulo || !precio || !vendedor || !whatsapp) {
+        mensajeErrorForm.textContent = "Completá los campos obligatorios marcados con *.";
+        mensajeErrorForm.classList.remove("hidden");
+        return;
+      }
+
+      if (!supabaseClient) {
+        mensajeErrorForm.textContent = "No hay conexión activa con la base de datos.";
+        mensajeErrorForm.classList.remove("hidden");
+        return;
+      }
+
+      btnEnviarAviso.disabled = true;
+      btnEnviarAviso.textContent = archivoFotoSeleccionado ? "Subiendo foto..." : "Publicando...";
+
+      try {
+        let imageUrl = "";
+        if (archivoFotoSeleccionado) {
+          imageUrl = await subirFotoASupabase(archivoFotoSeleccionado);
+        }
+
+        btnEnviarAviso.textContent = "Guardando aviso...";
+        const { data, error } = await supabaseClient
+          .from("listings")
+          .insert([{
+            section: seccion,
+            category: categoria,
+            location: localidad,
+            title: titulo,
+            price: precio,
+            seller: vendedor,
+            whatsapp: whatsapp,
+            description: descripcion,
+            image_url: imageUrl
+          }])
+          .select()
+          .single();
+
+        if (error) {
+          throw new Error("No se pudo guardar el aviso: " + error.message);
+        }
+
+        avisos = [data, ...avisos.filter((a) => !String(a.id).startsWith("demo-"))];
+        seccionActiva = seccion;
+        categoriaActiva = "TODAS";
+
+        document.querySelectorAll(".tab-btn").forEach((b) => {
+          const esActiva = b.dataset.section === seccionActiva;
+          b.className = `tab-btn px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition cursor-pointer ${
+            esActiva
+              ? "bg-emerald-700 text-white"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`;
+        });
+
+        cerrarModal();
+        renderizarTodo();
+      } catch (err) {
+        mensajeErrorForm.textContent = err.message || "Ocurrió un error al publicar.";
+        mensajeErrorForm.classList.remove("hidden");
+      } finally {
+        btnEnviarAviso.disabled = false;
+        btnEnviarAviso.textContent = "Publicar ahora";
+      }
+    });
+
+    // Inicio
+    poblarCategoriasFormulario(seccionActiva);
+    cargarAvisos();
+  </script>
+</body>
+</html>
